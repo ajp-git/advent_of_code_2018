@@ -1,7 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 
 use aoc_runner_derive::{aoc, aoc_generator};
-use itertools::Itertools;
 
 #[aoc_generator(day2)]
 fn input_generator(input: &str) -> Vec<String> {
@@ -14,7 +13,7 @@ fn input_generator(input: &str) -> Vec<String> {
 }
 
 #[aoc(day2, part1)]
-fn solve_part1(input: &Vec<String>) -> usize {
+fn solve_part1(input: &[String]) -> usize {
     
     let mut count2=0;
     let mut count3=0;
@@ -32,7 +31,7 @@ fn solve_part1(input: &Vec<String>) -> usize {
 
 
 #[aoc(day2, part2)]
-fn solve_part2(input: &Vec<String>) -> String {
+fn solve_part2(input: &[String]) -> String {
 
     for x in input.iter(){
         for y in input.iter() {
