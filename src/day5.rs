@@ -5,7 +5,7 @@ use itertools::Itertools;
 
 #[aoc_generator(day5)]
 fn input_generator(input: &str) -> Vec<u8> {
-    let input="dabAcCaCBAcCcaDA";
+    //let input="dabAcCaCBAcCcaDA";
     input.to_string().chars().map(|c| c as u8).collect()
 }
 
@@ -22,7 +22,7 @@ fn solve_part1(input: &Vec<u8>) -> u32 {
 
         let curr_len=input.len();
         if last_len==curr_len {
-            println!("No change in len, breaking");
+            println!("\nNo change in len, breaking");
             break;
         }
         print!("\rlen :{}", curr_len);
@@ -33,18 +33,23 @@ fn solve_part1(input: &Vec<u8>) -> u32 {
         loop {
             let c1 = iter.next();
             let c2=iter.peek();
-            if c2.is_none() { input_tmp.push(*c1.unwrap()); break;}
+            if c2.is_none() { 
+                if c1.is_some() {
+                    input_tmp.push(*c1.unwrap());
+                }
+                break;
+            }
             let c1=*c1.unwrap();
             let c2=**c2.unwrap();
-            println!("Comparing {} and {}", c1 as char, c2 as char);
+//            println!("Comparing {} and {}", c1 as char, c2 as char);
             if !(c1==c2+32 || c2==c1+32) {
                 input_tmp.push(c1);
             } else {
-                println!("Removing {} and {}", c1 as char, c2 as char);
+//                println!("Removing {} and {}", c1 as char, c2 as char);
                 iter.next();
             }
         }
-        println!("New String :{:?}",input.iter().map(|c|*c as char).collect::<Vec<char>>());
+//        println!("New String :{:?}",input.iter().map(|c|*c as char).collect::<Vec<char>>());
     }
     println!();
     last_len as u32
