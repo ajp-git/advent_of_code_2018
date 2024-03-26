@@ -9,6 +9,7 @@ struct Step {
     before:Vec<char>,
     after:Vec<char>,
     done: bool,
+    assigned:bool,
     counter:u32,
 }
 
@@ -18,6 +19,8 @@ struct Instructions {
     current_step: char,
     ordered_step:HashSet<char>,
     elves:HashMap<u32,char>,
+    delay:u32,
+    global_counter:u32
 }
 
 impl Instructions {
@@ -27,7 +30,7 @@ impl Instructions {
     fn is_finished(self: &Self) -> bool{
         self.steps.iter().find(|(c, s)|s.done==false).is_none()
     }
-    fn new (steps: &HashMap<char, Step>, elves_number:u32) -> Self {
+    fn new (steps: &HashMap<char, Step>, elves_number:u32, delay: u32) -> Self {
 
         let mut elves:HashMap<u32,char>=HashMap::new();
         for i in 0..elves_number{
@@ -38,6 +41,8 @@ impl Instructions {
             ordered_step: HashSet::new(),
             current_step:' ',
             elves:elves,
+            delay:delay,
+            global_counter:0,
         }
     }
 
@@ -96,11 +101,20 @@ impl Instructions {
 
     fn get_available_instructions (self: &Self) -> Option<Vec<char>> {
 
-        // return all instructions with a before done
-        if self.ordered_step.is_empty() {
+        let mut avail_ins:Vec<char> = Vec::new();
+        
+        for &step_id in self.ordered_step.iter() {
+            let step = self.steps.get(&step_id).unwrap();
+            if ! step.assigned {
+                avail_ins.push(step_id);
+            }
+        }
+
+        if avail_ins.is_empty() {
             return None;
         }
-        let avail_ins:Vec<char> = self.ordered_step.iter().sorted().copied().collect();
+        
+        avail_ins.sort();
         Some(avail_ins)
     }
 
@@ -116,20 +130,39 @@ impl Instructions {
         Some(avail_elves)
     }
 
-    /// advance one step all instructions
-    fn one_turn(self:&mut Self) {
+    fn free_elfe_for_step(&mut self, step_id:char){
 
+        for value in self.elves.values_mut(){
+            if *value==step_id {
+                *value=' ';
+            }
+        }
+    }
+    /// advance one step all instructions
+    fn one_turn(self:&mut Self) -> Option<Vec<char>> {
+
+        let mut added_steps=Vec::new();
+
+        print!("\n\t{}", 
+            self.global_counter);
+        for (id, c) in &self.elves{
+            print!("\t{}", c);
+        }
         let mut new_steps:Vec<char>=Vec::new();
         let mut remove_steps:Vec<char>=Vec::new();
 
         for &s in self.ordered_step.iter() {
             if let Some(step) = self.steps.get_mut(&s) {
-                step.counter-=1;
-                if step.counter==0{
-                    for &i in step.after.iter(){
-                        new_steps.push(i);
-                    }
-                    remove_steps.push(s);
+                if step.assigned {
+                    print!(":{}",step.counter);
+                    step.counter-=1;
+                    if step.counter==0{
+                        added_steps.push(s);
+                        for &i in step.after.iter(){
+                            new_steps.push(i);
+                        }
+                        remove_steps.push(s);
+                    }    
                 }
             } else {
                 panic!("In one_turn, step {s} not found");
@@ -137,21 +170,33 @@ impl Instructions {
 
         }
         for &i in new_steps.iter(){self.ordered_step.insert(i);}
-        for i in remove_steps.iter(){self.ordered_step.remove(i);}
+        for i in remove_steps.iter(){
+            self.ordered_step.remove(i);
+            self.free_elfe_for_step(*i);
+        }
+
+        if added_steps.is_empty(){return None;}
+        Some(added_steps)
     }
 
     fn attribute_instructions_to_elves(&mut self) {
-        let steps: Vec<char> = self.ordered_step.iter().sorted().copied().collect();
-        let mut changes = Vec::new();
-    
-        for (step, (elfe, _)) in steps.iter().zip(self.elves.iter_mut().filter(|(_, c)| **c == ' ')) {
-            // `elfe` is a reference to the key, so we clone the key itself
-            changes.push((*elfe, *step));
-        }
-    
-        for (elfe, step) in changes {
-            // Insert the cloned key and the step into the HashMap
-            self.elves.insert(elfe, step);
+        
+        if let Some(steps) = self.get_available_instructions(){
+            let mut changes = Vec::new();
+        
+            for (step, (elfe, _)) in steps.iter().zip(self.elves.iter_mut().filter(|(_, c)| **c == ' ')) {
+                // `elfe` is a reference to the key, so we clone the key itself
+                changes.push((*elfe, *step));
+            }
+        
+            for (elfe, step_id) in changes {
+                // Insert the cloned key and the step into the HashMap
+                self.elves.insert(elfe, step_id);
+                
+                let mut step=self.steps.get_mut(&step_id).unwrap();
+//                step.counter=(step_id as u8) as u32 + self.delay;
+                step.assigned=true;
+            }          
         }
     }
 
@@ -161,17 +206,25 @@ impl Instructions {
 
         let first=self.find_first();
         println!("First step is {}", first);
-        result.push(first);
+        self.ordered_step.insert(first);
+//        result.push(first);
         loop {
-            if self.is_finished(){
+            if self.ordered_step.is_empty(){
                 break;
             }
-    
-            self.one_turn();
             if self.get_available_instructions().is_some() && self.get_available_elfe().is_some() {
                 self.attribute_instructions_to_elves();
             }
-    
+            let added_steps=self.one_turn();
+            if let Some(added_steps) = added_steps {
+                for c in added_steps{
+                    result.push(c)
+                }                        
+            }
+            self.global_counter+=1;
+            if self.global_counter==20 {
+                panic!();
+            }
         }
         result
     }
@@ -204,13 +257,13 @@ fn input_generator(input: &str) -> HashMap<char,Step> {
     let mut steps:HashMap<char, Step>=HashMap::new();
     let elves:u32=2;
     let add_seconds:u32=0;
-    /*let input="Step C must be finished before step A can begin.
+    let input="Step C must be finished before step A can begin.
 Step C must be finished before step F can begin.
 Step A must be finished before step B can begin.
 Step A must be finished before step D can begin.
 Step B must be finished before step E can begin.
 Step D must be finished before step E can begin.
-Step F must be finished before step E can begin.";*/
+Step F must be finished before step E can begin.";
 
     let re=Regex::new(r"Step (\w) must be finished before step (\w) can begin.").unwrap();
 
@@ -230,7 +283,8 @@ Step F must be finished before step E can begin.";*/
                     before: Vec::new(),
                     after:vec![after],
                     done:false,
-                    counter:before as u32-b'A' as u32+add_seconds+1
+                    counter:before as u32-b'A' as u32+add_seconds+1,
+                    assigned:false,
                 }
             );
         }
@@ -238,7 +292,13 @@ Step F must be finished before step E can begin.";*/
         if let Some(step) = steps.get_mut(&after) {
             step.before.push(before);
         } else {
-            steps.insert(after, Step{before: vec![before],after:Vec::new(),done:false,counter:after as u32-b'A' as u32+add_seconds });
+            steps.insert(after, Step{
+                before: vec![before],
+                after:Vec::new(),
+                done:false,
+                counter:after as u32-b'A' as u32+add_seconds+1,
+                assigned:false
+            });
         }
     }
 
@@ -273,7 +333,7 @@ fn solve_part1(input: &HashMap<char, Step>) -> String {
 
     return "BGJCNLQUYIFMOEZTADKSPVXRHW".to_string();
     let mut result:String=String::new();
-    let mut instructions=Instructions::new(input, 1);
+    let mut instructions=Instructions::new(input, 1, 0);
 
     let first=instructions.find_first();
     println!("First step is {}", first);
@@ -299,7 +359,7 @@ fn solve_part1(input: &HashMap<char, Step>) -> String {
 fn solve_part2(input: &HashMap<char, Step>) -> String {
     let elves:u32=2;
 
-    let mut instructions=Instructions::new(input, elves);
+    let mut instructions=Instructions::new(input, elves, 0);
 
     instructions.run_part2()
 }
