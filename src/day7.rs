@@ -138,6 +138,24 @@ impl Instructions {
             }
         }
     }
+
+    fn before_done(self: &Self, c:char) -> bool{
+
+        if let Some(step)=self.steps.get(&c) {
+            for prev in step.before.iter() {
+                if let Some(prev)=self.steps.get(prev) {
+                    if prev.done==false{
+                        return false;
+                    } 
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
     /// advance one step all instructions
     fn one_turn(self:&mut Self) -> Option<Vec<char>> {
 
@@ -146,7 +164,7 @@ impl Instructions {
         print!("\n\t{}", 
             self.global_counter);
         for (id, c) in &self.elves{
-            print!("\t{}", c);
+            print!("\t{}", if c.is_alphabetic(){c}else{&'.'});
         }
         let mut new_steps:Vec<char>=Vec::new();
         let mut remove_steps:Vec<char>=Vec::new();
@@ -154,16 +172,17 @@ impl Instructions {
         for &s in self.ordered_step.iter() {
             if let Some(step) = self.steps.get_mut(&s) {
                 if step.assigned {
-                    print!(":{}",step.counter);
                     step.counter-=1;
                     if step.counter==0{
                         added_steps.push(s);
                         for &i in step.after.iter(){
-                            new_steps.push(i);
+                            if self.before_done(i) {
+                                new_steps.push(i);
+                            }
                         }
                         remove_steps.push(s);
                     }    
-                }
+                } 
             } else {
                 panic!("In one_turn, step {s} not found");
             }
@@ -222,9 +241,6 @@ impl Instructions {
                 }                        
             }
             self.global_counter+=1;
-            if self.global_counter==20 {
-                panic!();
-            }
         }
         result
     }
@@ -255,7 +271,7 @@ impl Instructions {
 fn input_generator(input: &str) -> HashMap<char,Step> {
 
     let mut steps:HashMap<char, Step>=HashMap::new();
-    let elves:u32=2;
+    let elves:u32=0;
     let add_seconds:u32=0;
     let input="Step C must be finished before step A can begin.
 Step C must be finished before step F can begin.
