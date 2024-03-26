@@ -156,92 +156,13 @@ impl Instructions {
 
     }
 
-    /// advance one step all instructions
-    fn one_turn(self:&mut Self) -> Option<Vec<char>> {
-
-        let mut added_steps=Vec::new();
-
-        print!("\n\t{}", 
-            self.global_counter);
-        for (id, c) in &self.elves{
-            print!("\t{}", if c.is_alphabetic(){c}else{&'.'});
-        }
-        let mut new_steps:Vec<char>=Vec::new();
-        let mut remove_steps:Vec<char>=Vec::new();
-
-        for &s in self.ordered_step.iter() {
-            if let Some(step) = self.steps.get_mut(&s) {
-                if step.assigned {
-                    step.counter-=1;
-                    if step.counter==0{
-                        added_steps.push(s);
-                        for &i in step.after.iter(){
-                            if self.before_done(i) {
-                                new_steps.push(i);
-                            }
-                        }
-                        remove_steps.push(s);
-                    }    
-                } 
-            } else {
-                panic!("In one_turn, step {s} not found");
-            }
-
-        }
-        for &i in new_steps.iter(){self.ordered_step.insert(i);}
-        for i in remove_steps.iter(){
-            self.ordered_step.remove(i);
-            self.free_elfe_for_step(*i);
-        }
-
-        if added_steps.is_empty(){return None;}
-        Some(added_steps)
+    fn get_step(self: &Self, c:char)-> &Step{
+        &self.steps.get(&c).unwrap()
     }
 
-    fn attribute_instructions_to_elves(&mut self) {
-        
-        if let Some(steps) = self.get_available_instructions(){
-            let mut changes = Vec::new();
-        
-            for (step, (elfe, _)) in steps.iter().zip(self.elves.iter_mut().filter(|(_, c)| **c == ' ')) {
-                // `elfe` is a reference to the key, so we clone the key itself
-                changes.push((*elfe, *step));
-            }
-        
-            for (elfe, step_id) in changes {
-                // Insert the cloned key and the step into the HashMap
-                self.elves.insert(elfe, step_id);
-                
-                let mut step=self.steps.get_mut(&step_id).unwrap();
-//                step.counter=(step_id as u8) as u32 + self.delay;
-                step.assigned=true;
-            }          
-        }
-    }
-
-    fn run_part2 (self: &mut Self)-> String {
+    fn run_part2 (self: &mut Self)-> u32 {
         println!("Running part 2");
-        let mut result:String=String::new();
-
-        let first=self.find_first();
-        println!("First step is {}", first);
-        self.ordered_step.insert(first);
-//        result.push(first);
-        loop {
-            if self.ordered_step.is_empty(){
-                break;
-            }
-            if self.get_available_instructions().is_some() && self.get_available_elfe().is_some() {
-                self.attribute_instructions_to_elves();
-            }
-            let added_steps=self.one_turn();
-            if let Some(added_steps) = added_steps {
-                for c in added_steps{
-                    result.push(c)
-                }                        
-            }
-            self.global_counter+=1;
-        }
+        let mut result=2017;
         result
     }
 
@@ -372,7 +293,7 @@ fn solve_part1(input: &HashMap<char, Step>) -> String {
 }
 
 #[aoc(day7, part2)]
-fn solve_part2(input: &HashMap<char, Step>) -> String {
+fn solve_part2(input: &HashMap<char, Step>) -> u32 {
     let elves:u32=2;
 
     let mut instructions=Instructions::new(input, elves, 0);
