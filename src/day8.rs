@@ -1,5 +1,3 @@
-use std::fs::Metadata;
-
 use aoc_runner_derive::{aoc, aoc_generator};
 
 #[aoc_generator(day8)]
@@ -51,39 +49,27 @@ fn get_metadata_sum_part2(input: &Vec<u8>, index:usize, level:usize ) -> (u32,us
     let mut metadata_sum:u32=0;
     let mut child_value:Vec<u32>=Vec::new();
     
-    let mut ident="-- ".repeat(level);
-    ident=format!("{} > ", ident);
-    println!("{} Entering",ident);
     let children_numbers=input[index];
     index+=1;
 
     let metadata_numbers= input[index];
     index+=1;
 
-    println!("{}Found {} children and {} meta", ident, children_numbers, metadata_numbers);
-        
     for _ in 0..children_numbers {
         let (sum, new_index) = get_metadata_sum_part2(input, index, level+1);
         index=new_index;
         child_value.push(sum);            
     }
-    println!("{ident} children values:{child_value:?}");
     for i in 0..metadata_numbers {
         let meta_val=input[index];
-        println!("{ident} metadata {i} : {meta_val}");
         if children_numbers>0 {
             if meta_val<= children_numbers {
-                println!("{ident} Adding child_value[{}] {}", meta_val-1, child_value[meta_val as usize -1]);
                 metadata_sum+=child_value[meta_val as usize -1];
-            } else {
-                println!("{ident} child_value[{}] out of scope", meta_val-1);
-            }
         } else {
             metadata_sum+=meta_val as u32;
         }
         index+=1;
     }
 
-    println!("{ident} Returning {}",metadata_sum);
     (metadata_sum,index)
 }
