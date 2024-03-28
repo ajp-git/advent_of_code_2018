@@ -65,8 +65,9 @@ fn get_metadata_sum_part2(input: &Vec<u8>, index:usize, level:usize ) -> (u32,us
         if children_numbers>0 {
             if meta_val<= children_numbers {
                 metadata_sum+=child_value[meta_val as usize -1];
-        } else {
-            metadata_sum+=meta_val as u32;
+            } else {
+                metadata_sum+=meta_val as u32;
+            }
         }
         index+=1;
     }
