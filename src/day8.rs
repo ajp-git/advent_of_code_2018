@@ -3,7 +3,7 @@ use aoc_runner_derive::{aoc, aoc_generator};
 #[aoc_generator(day8)]
 fn input_generator(input: &str) -> Vec<u8> {
 
-    let input="2 3 0 3 10 11 12 1 1 0 1 99 2 1 1 2";
+   // let input="2 3 0 3 10 11 12 1 1 0 1 99 2 1 1 2";
 
     let numbers=input.split_whitespace();
     
