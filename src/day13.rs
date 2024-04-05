@@ -94,6 +94,7 @@ impl Cart {
 struct Crop {
     grid:HashMap<(usize,usize),char>,
     carts:Vec<Cart>,
+    last_step: bool,
 }
 
 impl Crop {
@@ -108,8 +109,8 @@ impl Crop {
     fn step(&mut self) -> Option<(usize,usize)> {
         // on parse les carts
         // on regarde la direction de chacun et la case
-        self.print();
-        println!();
+        //self.print();
+        //println!();
         
         let mut new_carts:Vec<Cart>=Vec::new();
 
@@ -121,6 +122,23 @@ impl Crop {
         self.carts=new_carts;
         self.is_crash()
     }
+    
+    fn step_part2(&mut self) -> Option<(usize,usize)> {
+        // on parse les carts
+        // on regarde la direction de chacun et la case
+        //self.print();
+        //println!();
+        
+        let mut new_carts:Vec<Cart>=Vec::new();
+
+        let mut carts=self.get_ordered_carts();
+        for cart in carts.iter_mut() {
+            cart.go_next_pos(self.get_cart_path(cart.id));
+            new_carts.push(cart.clone());
+        }
+        self.carts=new_carts;
+        self.is_crash_part2()
+    }
 
     fn is_crash(&self) -> Option<(usize, usize)> {
         
@@ -130,6 +148,32 @@ impl Crop {
             if ! positions.insert((cart.x, cart.y)){
                 return Some((cart.x,cart.y));
             }
+        }
+        None
+    }
+
+    fn is_crash_part2(&mut self) -> Option<(usize, usize)> {
+        
+        let mut ids:Vec<u32>=Vec::new();
+
+        for (i, cart_1) in self.carts.iter().enumerate() {
+            for (j, cart_2) in self.carts.iter().enumerate().skip(i+1) {
+                if cart_1.x==cart_2.x && cart_1.y==cart_2.y{
+                    ids.push(cart_1.id);
+                    ids.push(cart_2.id);
+                    println!("Removing {}:{},{} and {}:{},{}", 
+                        cart_1.id, cart_1.x, cart_1.y,
+                        cart_2.id, cart_2.x, cart_2.y,
+                    );
+
+                }
+            }
+        }
+
+        self.carts.retain(|cart| !ids.contains(&cart.id));
+        
+        if self.carts.len()==1{
+            return Some((self.carts[0].x,self.carts[0].y));
         }
         None
     }
@@ -180,6 +224,15 @@ fn input_generator(input: &str) -> Crop {
 \\-+-/  \\-+--/
   \\------/  ";
  */
+/*
+ let input="/>-<\\  
+|   |  
+| /<+-\\
+| | | v
+\\>+</ |
+  |   ^
+  \\<->/";*/
+
     let mut grid:HashMap<(usize,usize), char>=HashMap::new();
     let mut carts:Vec<Cart>=Vec::new();
     let mut card_id=0;
@@ -203,7 +256,7 @@ fn input_generator(input: &str) -> Crop {
         }
     }
     
-    Crop { grid: grid, carts: carts }
+    Crop { grid: grid, carts: carts, last_step:false }
 }
 
 #[aoc(day13, part1)]
@@ -215,11 +268,16 @@ fn solve_part1(input: &Crop) -> String {
             return format!("{},{}", pos.0, pos.1);
         }
     }
-    "".to_string()
 }
 
 #[aoc(day13, part2)]
 fn solve_part2(input: &Crop) -> String {
-    "".to_string()
+    let mut crop=input.clone();
+    
+    loop{
+        if let Some(pos)=crop.step_part2(){
+            return format!("{},{}", pos.0, pos.1);
+        }
+    }
 }
 
