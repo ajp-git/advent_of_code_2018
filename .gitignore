@@ -2,3 +2,4 @@ target/
 Cargo.lock
 input/
 cpu/
+.DS_Store
