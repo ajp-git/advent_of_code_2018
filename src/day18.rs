@@ -1,9 +1,13 @@
 #[warn(missing_debug_implementations, missing_docs)]
 use std::cmp::min;
+use std::{
+    collections::{HashMap, HashSet},
+    process::exit,
+};
 
 use aoc_runner_derive::{aoc, aoc_generator};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 enum Acre {
     Ground,
     Tree,
@@ -114,6 +118,55 @@ fn solve_part1(lumber: &Lumber) -> usize {
         .filter(|&w| *w == Acre::Tree)
         .count()
         * lumber
+            .grid
+            .iter()
+            .flatten()
+            .filter(|&w| *w == Acre::LumberYard)
+            .count()
+}
+
+#[aoc(day18, part2)]
+fn solve_part2(lumber: &Lumber) -> usize {
+    let mut lumber = lumber.clone();
+    println!("Original");
+    let mut happens: HashMap<Vec<Vec<Acre>>, usize> = HashMap::new();
+    let mut total = 0;
+    let mut i = 0;
+    while (i + 1) % 28 != 1000000000 % 28 {
+        i += 1;
+        lumber.step();
+        //lumber.print();
+        if let Some(last) = happens.insert(lumber.grid.clone(), i) {
+            println!("{} is the modulo", i - last);
+            exit(0);
+        }
+
+        if i > 10 {
+            println!(
+                "Total for {i} : {}",
+                &lumber
+                    .grid
+                    .iter()
+                    .flatten()
+                    .filter(|&w| *w == Acre::Tree)
+                    .count()
+                    * &lumber
+                        .grid
+                        .iter()
+                        .flatten()
+                        .filter(|&w| *w == Acre::LumberYard)
+                        .count()
+            );
+        }
+    }
+
+    &lumber
+        .grid
+        .iter()
+        .flatten()
+        .filter(|&w| *w == Acre::Tree)
+        .count()
+        * &lumber
             .grid
             .iter()
             .flatten()
