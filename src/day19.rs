@@ -1,13 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    process::id,
-};
+use std::collections::HashMap;
 
 use aoc_runner_derive::{aoc, aoc_generator};
 use regex::Regex;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Operation {
     name: String,
     id: u8,
@@ -28,13 +25,8 @@ struct TrainData {
 struct RealData {
     values: Vec<u8>,
 }
-#[derive(Debug, Clone, PartialEq)]
-struct Possibilities {
-    id: u8,
-    ids: HashSet<String>,
-}
 
-#[aoc_generator(day16)]
+#[aoc_generator(day19)]
 fn input_generator(input: &str) -> (Vec<TrainData>, Vec<RealData>) {
     let mut train: Vec<TrainData> = Vec::new();
     let mut data: Vec<RealData> = Vec::new();
@@ -79,21 +71,13 @@ fn input_generator(input: &str) -> (Vec<TrainData>, Vec<RealData>) {
     (train, data)
 }
 
-fn get_operation_name(operations: &Vec<Operation>, id: u8) -> String {
-    let op = operations.iter().find(|op| op.id == id).unwrap();
-    op.name.clone()
-}
-
 fn execute_op(regs: &Vec<u32>, operations: &Vec<Operation>, command: &Vec<u8>) -> Vec<u32> {
     let mut new_regs = regs.clone();
     let command: Vec<usize> = command.iter().map(|v| *v as usize).collect();
     let operation = operations
         .iter()
         .find(|operation| operation.id == command[0] as u8)
-        .expect("msg: operation not found {command}");
-
-    println!("Executing {}", operation.name);
-
+        .expect("msg: operation not found");
     match operation.name.as_str() {
         "addr" => {
             new_regs[command[3]] = new_regs[command[1]] + new_regs[command[2]];
@@ -173,7 +157,7 @@ fn execute_op(regs: &Vec<u32>, operations: &Vec<Operation>, command: &Vec<u8>) -
     new_regs
 }
 
-fn simulate(train: &Vec<TrainData>) -> (usize, Vec<Operation>, Vec<Possibilities>) {
+fn simulate(train: &Vec<TrainData>) -> (usize, Vec<Operation>) {
     let mut operations: Vec<Operation> = vec![
         ("addr", 0u8),
         ("addi", 1),
@@ -199,11 +183,17 @@ fn simulate(train: &Vec<TrainData>) -> (usize, Vec<Operation>, Vec<Possibilities
     })
     .collect();
 
+    let mut proba: HashMap<(usize, Vec<u8>), u32> = HashMap::new();
     let mut regs: Vec<u32> = vec![0; 4];
+    #[derive(Debug, Clone, PartialEq)]
+    struct Possibilities {
+        id: u8,
+        ids: Vec<u8>,
+    }
     let mut posssibilities: Vec<Possibilities> = (0..16)
         .map(|i| Possibilities {
             id: i,
-            ids: HashSet::new(),
+            ids: (0..16).collect(),
         })
         .collect();
 
@@ -236,83 +226,79 @@ fn simulate(train: &Vec<TrainData>) -> (usize, Vec<Operation>, Vec<Possibilities
                 .count()
                 == 4
             {
-                let mut pos: &mut Possibilities = posssibilities
+                // Good match
+                /*                println!(
+                    "{} {} is a good match for line {:?}",
+                    op, operations[op as usize].name, train_line
+                ); */
+                let key = (index, train_line.values.clone());
+                *proba.entry(key).or_insert(0) += 1;
+            } else {
+                /*if train_line.values[0] == 0 {
+                    println!("Removing {} from {}", op, train_line.values[0]);
+                }*/
+                posssibilities
                     .get_mut(train_line.values[0] as usize)
-                    .unwrap();
-                pos.ids.insert(get_operation_name(&operations, op));
+                    .unwrap()
+                    .ids
+                    .retain(|&f| f != op);
             }
         }
     }
 
-    let l = train
-        .iter()
-        .filter(|line| posssibilities[line.values[0] as usize].ids.len() >= 3)
-        .count();
-
-    (l, operations, posssibilities)
+    loop {
+        let mut new_posssibilities = posssibilities.clone();
+        let mut changed = false;
+        for (i, pos) in posssibilities.iter().enumerate() {
+            if pos.ids.len() == 1 {
+                let remove = pos.ids[0];
+                //println!("Removing {}", remove);
+                for (j, other_pos) in new_posssibilities.iter_mut().enumerate() {
+                    if i != j {
+                        let original_len = other_pos.ids.len();
+                        other_pos.ids.retain(|&f| f != remove);
+                        if original_len != other_pos.ids.len() {
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+        posssibilities = new_posssibilities;
+        if !changed {
+            break;
+        }
+    }
+    /*for i in 0..posssibilities.len() {
+        println!("Possibilities of {i} : {:?}", posssibilities[i].ids);
+    }*/
+    operations
+        .iter_mut()
+        .zip(posssibilities)
+        .for_each(|(o, p)| o.id = p.ids[0]);
+    (proba.iter().filter(|&l| l.1 >= &3).count(), operations)
 }
 
-#[aoc(day16, part1)]
+#[aoc(day19, part1)]
 fn solve_part1((train, values): &(Vec<TrainData>, Vec<RealData>)) -> usize {
     simulate(train).0
     //println!("Training : {:?}", train);
     //println!("Data : {:?}", values);
 }
-#[aoc(day16, part2)]
+#[aoc(day19, part2)]
 fn solve_part2((train, values): &(Vec<TrainData>, Vec<RealData>)) -> u32 {
-    let (_, operations, possibilities) = simulate(train);
-
-    let mut possibilities = possibilities.clone();
-    for pos in possibilities.iter() {
-        println!("Pos id : {} : {:?}", pos.id, pos.ids);
-    }
-    loop {
-        let to_remove: Vec<String> = possibilities
-            .iter()
-            .filter(|p| p.ids.len() == 1)
-            .map(|f| f.ids.iter().last().unwrap().clone())
-            .collect();
-        println!("Removing {:?}", to_remove);
-        if to_remove.len() == 16 {
-            break;
-        }
-        for remove in to_remove.iter() {
-            for pos in possibilities.iter_mut() {
-                if pos.ids.len() > 1 && pos.ids.contains(remove) {
-                    println!("Removing {remove} from {pos:?}");
-                    pos.ids.retain(|id| id != remove);
-                }
-            }
-        }
-    }
-    let operations: Vec<Operation> = operations
-        .iter()
-        .zip(possibilities.iter())
-        .map(|(op, pos)| {
-            let name = pos.ids.iter().next().unwrap();
-            Operation {
-                id: op.id,
-                name: name.clone(),
-            }
-        })
-        .collect();
-
-    for op in operations.iter() {
-        println!("Name : {}, id = {}", op.name, op.id);
-    }
-    println!("Operations : {:?}", operations);
+    let operations = simulate(train).1;
 
     let mut regs = vec![0u32; 4];
     values.iter().for_each(|v| {
         regs = execute_op(&regs, &operations, &v.values);
-        println!("After operation regs are {:?}", regs);
-        /*if let Some(op) = operations.iter().find(|x| x.id == v.values[0]) {
+        if let Some(op) = operations.iter().find(|x| x.id == v.values[0]) {
             println!("Op : {:?}\tline : {:?}\tregs {:?}", op.name, v.values, regs);
-        }*/
+        }
     });
+    println!("Operations : {:?}", operations);
     //println!("Training : {:?}", train);
     //println!("Data : {:?}", values);
-
     regs[0]
 }
 
